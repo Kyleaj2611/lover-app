@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lover ❤️</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #05020f;
+    cursor: none;
+}
+
+canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+}
+
+#fullscreen {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    z-index: 10;
+    padding: 8px 12px;
+    border: 1px solid rgba(255,150,220,.5);
+    border-radius: 10px;
+    background: rgba(20,5,30,.6);
+    color: #ffd5ef;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+#fullscreen:hover {
+    background: rgba(255,55,160,.25);
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<button id="fullscreen">⛶</button>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let WIDTH = window.innerWidth;
+let HEIGHT = window.innerHeight;
+
+canvas.width = WIDTH;
+canvas.height = HEIGHT;
+
+
+// =========================================================
+// COLORI
+// =========================================================
+
+const BLACK = "#05020f";
+const PINK = "#ff37a0";
+const LIGHT_PINK = "#ff96dc";
+const WHITE = "#fff5ff";
+const PURPLE = "#9646d2";
+
+
+// =========================================================
+// MOUSE
+// =========================================================
+
+let mouseX = WIDTH / 2;
+let mouseY = HEIGHT / 2;
+
+let lastMouseX = mouseX;
+let lastMouseY = mouseY;
+
+let mouseSpeed = 0;
+
+
+// =========================================================
+// STATO
+// =========================================================
+
+let clicks = 0;
+let time = 0;
+
+let message = "";
+let messageTimer = 0;
+let messageAnimation = 0;
+
+let birthday = false;
+let birthdayTime = 0;
+
+let showStartScreen = true;
+
+
+// =========================================================
+// MESSAGGI
+// =========================================================
+
+const messages = {
+    20: "TI AMO",
+    40: "SEI LA MIA VITA",
+    60: "SEI LA MIA PRINCIPESSA",
+    80: "SEI IL MIO MONDO"
+};
+
+
+// =========================================================
+// CUORE
+// =========================================================
+
+function heartPoints(cx, cy, size) {
+
+    const points = [];
+
+    for (let i = 0; i < 40; i++) {
+
+        const t = Math.PI * 2 * i / 40;
+
+        const x = 16 * Math.pow(Math.sin(t), 3);
+
+        const y =
+            13 * Math.cos(t)
+            - 5 * Math.cos(2 * t)
+            - 2 * Math.cos(3 * t)
+            - Math.cos(4 * t);
+
+        points.push({
+            x: cx + x * size / 16,
+            y: cy - y * size / 16
+        });
+    }
+
+    return points;
+}
+
+
+function drawHeart(x, y, size, color) {
+
+    const points = heartPoints(x, y, size);
+
+    ctx.beginPath();
+
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+
+    ctx.closePath();
+
+    ctx.fillStyle = color;
+    ctx.fill();
+}
+
+
+// =========================================================
+// STELLE
+// =========================================================
+
+const stars = [];
+
+for (let i = 0; i < 180; i++) {
+
+    stars.push({
+
+        x: Math.random() * WIDTH,
+        y: Math.random() * HEIGHT,
+
+        size: [1,1,1,2,2,3,4][
+            Math.floor(Math.random() * 7)
+        ],
+
+        phase: Math.random() * Math.PI * 2,
+
+        speed:
+            0.015 +
+            Math.random() * 0.03,
+
+        vx:
+            -0.08 +
+            Math.random() * 0.16,
+
+        vy:
+            -0.05 +
+            Math.random() * 0.10
+    });
+}
+
+
+// =========================================================
+// PARTICELLE AMBIENTALI
+// =========================================================
+
+const particles = [];
+
+for (let i = 0; i < 55; i++) {
+
+    particles.push({
+
+        x: Math.random() * WIDTH,
+        y: Math.random() * HEIGHT,
+
+        vx:
+            -0.15 +
+            Math.random() * 0.30,
+
+        vy:
+            -0.15 +
+            Math.random() * 0.30,
+
+        size: [1,1,2][
+            Math.floor(Math.random() * 3)
+        ]
+    });
+}
+
+
+// =========================================================
+// EFFETTI
+// =========================================================
+
+let trail = [];
+let clickParticles = [];
+let floatingHearts = [];
+let rings = [];
+let birthdayHearts = [];
+
+
+// =========================================================
+// CUORI ORBITALI
+// =========================================================
+
+const orbitHearts = [];
+
+for (let i = 0; i < 28; i++) {
+
+    orbitHearts.push({
+
+        angle:
+            Math.PI * 2 / 28 * i,
+
+        speed:
+            0.004 +
+            Math.random() * 0.005,
+
+        distance:
+            190 +
+            Math.random() * 95,
+
+        size:
+            7 +
+            Math.random() * 7,
+
+        phase:
+            Math.random() * Math.PI * 2
+    });
+}
+
+
+// =========================================================
+// MOUSE MOVE
+// =========================================================
+
+window.addEventListener("mousemove", e => {
+
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+
+    const dx = mouseX - lastMouseX;
+    const dy = mouseY - lastMouseY;
+
+    mouseSpeed = Math.sqrt(
+        dx * dx + dy * dy
+    );
+
+    if (mouseSpeed > 2 && !showStartScreen) {
+
+        trail.push({
+            x: mouseX,
+            y: mouseY,
+            life: 35
+        });
+    }
+
+    if (trail.length > 30) {
+        trail.shift();
+    }
+
+    // Cuoricini sulla scia
+    if (mouseSpeed > 4 && !showStartScreen) {
+
+        floatingHearts.push({
+
+            x:
+                mouseX +
+                (Math.random() * 10 - 5),
+
+            y:
+                mouseY +
+                (Math.random() * 10 - 5),
+
+            vx:
+                Math.random() * .8 - .4,
+
+            vy:
+                Math.random() * -.8 - .4,
+
+            size:
+                4 +
+                Math.random() * 4,
+
+            life: 40
+        });
+    }
+
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+});
+
+
+// =========================================================
+// CLICK
+// =========================================================
+
+window.addEventListener("click", e => {
+
+    if (showStartScreen) {
+        showStartScreen = false;
+        return;
+    }
+
+    if (birthday) return;
+
+    clicks++;
+
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+
+
+    // =====================================================
+    // ESPLOSIONE
+    // =====================================================
+
+    for (let i = 0; i < 25; i++) {
+
+        const angle =
+            Math.random() * Math.PI * 2;
+
+        const speed =
+            1.5 +
+            Math.random() * 3.3;
+
+        clickParticles.push({
+
+            x: mouseX,
+            y: mouseY,
+
+            vx:
+                Math.cos(angle) *
+                speed,
+
+            vy:
+                Math.sin(angle) *
+                speed,
+
+            life:
+                35 +
+                Math.random() * 35,
+
+            size:
+                2 +
+                Math.random() * 2
+        });
+    }
+
+
+    // =====================================================
+    // CUORICINI
+    // =====================================================
+
+    for (let i = 0; i < 5; i++) {
+
+        const angle =
+            Math.random() * Math.PI * 2;
+
+        const speed =
+            .5 +
+            Math.random() * 1.5;
+
+        floatingHearts.push({
+
+            x: mouseX,
+            y: mouseY,
+
+            vx:
+                Math.cos(angle) *
+                speed,
+
+            vy:
+                Math.sin(angle) *
+                speed - 1,
+
+            size:
+                7 +
+                Math.random() * 7,
+
+            life: 80
+        });
+    }
+
+
+    // =====================================================
+    // OGNI 20 CLICK
+    // =====================================================
+
+    if (messages[clicks]) {
+
+        message = messages[clicks];
+
+        messageTimer = 180;
+
+        messageAnimation = 0;
+
+        rings.push({
+            radius: 20,
+            life: 80
+        });
+    }
+
+
+    // =====================================================
+    // 100 CLICK
+    // =====================================================
+
+    if (clicks >= 100) {
+
+        birthday = true;
+        birthdayTime = 0;
+
+
+        // Grande esplosione
+        for (let i = 0; i < 120; i++) {
+
+            const angle =
+                Math.random() * Math.PI * 2;
+
+            const speed =
+                2 +
+                Math.random() * 5;
+
+            clickParticles.push({
+
+                x: WIDTH / 2,
+                y: HEIGHT / 2,
+
+                vx:
+                    Math.cos(angle) *
+                    speed,
+
+                vy:
+                    Math.sin(angle) *
+                    speed,
+
+                life:
+                    60 +
+                    Math.random() * 70,
+
+                size:
+                    2 +
+                    Math.random() * 3
+            });
+        }
+
+
+        // Cuori che salgono
+        for (let i = 0; i < 55; i++) {
+
+            birthdayHearts.push({
+
+                x:
+                    Math.random() * WIDTH,
+
+                y:
+                    HEIGHT +
+                    Math.random() * 300,
+
+                vx:
+                    Math.random() * 1.2 - .6,
+
+                vy:
+                    -2.2 +
+                    Math.random() * 1.5,
+
+                size:
+                    7 +
+                    Math.random() * 9,
+
+                life:
+                    250 +
+                    Math.random() * 200,
+
+                phase:
+                    Math.random() * Math.PI * 2
+            });
+        }
+    }
+});
+
+
+// =========================================================
+// RESIZE
+// =========================================================
+
+window.addEventListener("resize", () => {
+
+    WIDTH = window.innerWidth;
+    HEIGHT = window.innerHeight;
+
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+});
+
+
+// =========================================================
+// FULLSCREEN
+// =========================================================
+
+document.getElementById("fullscreen").addEventListener(
+    "click",
+    async () => {
+
+        try {
+
+            if (!document.fullscreenElement) {
+
+                await document.documentElement.requestFullscreen();
+
+            } else {
+
+                await document.exitFullscreen();
+
+            }
+
+        } catch (e) {
+
+            console.log(e);
+        }
+    }
+);
+
+
+// =========================================================
+// ANIMAZIONE
+// =========================================================
+
+function animate() {
+
+    time += 0.08;
+
+
+    // =====================================================
+    // AGGIORNA STELLE
+    // =====================================================
+
+    for (const star of stars) {
+
+        star.phase += star.speed;
+
+        star.x += star.vx;
+        star.y += star.vy;
+
+        if (star.x < 0) star.x = WIDTH;
+        if (star.x > WIDTH) star.x = 0;
+
+        if (star.y < 0) star.y = HEIGHT;
+        if (star.y > HEIGHT) star.y = 0;
+    }
+
+
+    // =====================================================
+    // PARTICELLE
+    // =====================================================
+
+    for (const p of particles) {
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = WIDTH;
+        if (p.x > WIDTH) p.x = 0;
+
+        if (p.y < 0) p.y = HEIGHT;
+        if (p.y > HEIGHT) p.y = 0;
+    }
+
+
+    // =====================================================
+    // TRAIL
+    // =====================================================
+
+    for (const t of trail) {
+        t.life -= 2;
+    }
+
+    trail =
+        trail.filter(t => t.life > 0);
+
+
+    // =====================================================
+    // CLICK PARTICLES
+    // =====================================================
+
+    for (const p of clickParticles) {
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        p.vx *= .97;
+        p.vy *= .97;
+
+        p.life--;
+    }
+
+    clickParticles =
+        clickParticles.filter(
+            p => p.life > 0
+        );
+
+
+    // =====================================================
+    // CUORI
+    // =====================================================
+
+    for (const h of floatingHearts) {
+
+        h.x += h.vx;
+        h.y += h.vy;
+
+        h.vy -= .01;
+
+        h.life--;
+    }
+
+    floatingHearts =
+        floatingHearts.filter(
+            h => h.life > 0
+        );
+
+
+    // =====================================================
+    // ANELLI
+    // =====================================================
+
+    for (const r of rings) {
+
+        r.radius += 7;
+        r.life -= 2;
+    }
+
+    rings =
+        rings.filter(
+            r => r.life > 0
+        );
+
+
+    // =====================================================
+    // MESSAGGI
+    // =====================================================
+
+    if (messageTimer > 0) {
+
+        messageTimer--;
+        messageAnimation++;
+    }
+
+
+    // =====================================================
+    // FINALE
+    // =====================================================
+
+    if (birthday) {
+
+        birthdayTime += .08;
+
+        for (const h of orbitHearts) {
+
+            h.angle += h.speed;
+            h.phase += .03;
+        }
+
+
+        for (const h of birthdayHearts) {
+
+            h.x += h.vx;
+            h.y += h.vy;
+
+            h.phase += .05;
+
+            h.x +=
+                Math.sin(h.phase) *
+                .3;
+
+            h.life--;
+        }
+
+        birthdayHearts =
+            birthdayHearts.filter(
+                h => h.life > 0
+            );
+    }
+
+
+    // =====================================================
+    // SFONDO
+    // =====================================================
+
+    const gradient =
+        ctx.createLinearGradient(
+            0,
+            0,
+            0,
+            HEIGHT
+        );
+
+    gradient.addColorStop(
+        0,
+        "#070214"
+    );
+
+    gradient.addColorStop(
+        1,
+        "#160526"
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.fillRect(
+        0,
+        0,
+        WIDTH,
+        HEIGHT
+    );
+
+
+    const centerX = WIDTH / 2;
+    const centerY = HEIGHT / 2;
+
+
+    // =====================================================
+    // AURA
+    // =====================================================
+
+    const aura =
+        280 +
+        Math.sin(time * .7) * 20;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        centerX,
+        centerY,
+        aura,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle =
+        "rgba(28,4,38,.55)";
+
+    ctx.fill();
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+        centerX,
+        centerY,
+        210,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle =
+        "rgba(16,2,25,.8)";
+
+    ctx.fill();
+
+
+    // =====================================================
+    // STELLE
+    // =====================================================
+
+    for (const star of stars) {
+
+        const shine =
+            (
+                Math.sin(star.phase) + 1
+            ) / 2;
+
+        const brightness =
+            90 +
+            shine * 165;
+
+        ctx.fillStyle =
+            `rgb(${brightness},${brightness},${brightness})`;
+
+        if (star.size >= 3) {
+
+            const ray =
+                3 +
+                shine * 5;
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                star.x - ray,
+                star.y
+            );
+
+            ctx.lineTo(
+                star.x + ray,
+                star.y
+            );
+
+            ctx.moveTo(
+                star.x,
+                star.y - ray
+            );
+
+            ctx.lineTo(
+                star.x,
+                star.y + ray
+            );
+
+            ctx.strokeStyle =
+                `rgba(${brightness},${brightness},${brightness},.8)`;
+
+            ctx.stroke();
+        }
+
+        ctx.beginPath();
+
+        ctx.arc(
+            star.x,
+            star.y,
+            star.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+
+
+    // =====================================================
+    // PARTICELLE AMBIENTALI
+    // =====================================================
+
+    ctx.fillStyle =
+        "#783282";
+
+    for (const p of particles) {
+
+        ctx.beginPath();
+
+        ctx.arc(
+            p.x,
+            p.y,
+            p.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+
+
+    // =====================================================
+    // SCIA MOUSE
+    // =====================================================
+
+    for (const t of trail) {
+
+        const radius =
+            Math.max(
+                1,
+                t.life / 12
+            );
+
+        ctx.beginPath();
+
+        ctx.arc(
+            t.x,
+            t.y,
+            radius,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            PINK;
+
+        ctx.fill();
+    }
+
+
+    // =====================================================
+    // CUORI MOUSE
+    // =====================================================
+
+    for (const h of floatingHearts) {
+
+        drawHeart(
+            h.x,
+            h.y,
+            h.size,
+            LIGHT_PINK
+        );
+    }
+
+
+    // =====================================================
+    // ONDE
+    // =====================================================
+
+    for (const r of rings) {
+
+        ctx.beginPath();
+
+        ctx.arc(
+            centerX,
+            centerY,
+            r.radius,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.strokeStyle =
+            LIGHT_PINK;
+
+        ctx.lineWidth = 2;
+
+        ctx.stroke();
+    }
+
+
+    // =====================================================
+    // CUORE PRINCIPALE
+    // =====================================================
+
+    let heartSize;
+
+    if (!birthday) {
+
+        const pulse =
+            Math.sin(time);
+
+        heartSize =
+            125 +
+            pulse * 6;
+
+    } else {
+
+        const pulse =
+            (
+                Math.sin(
+                    birthdayTime * 2.2
+                ) + 1
+            ) / 2;
+
+        heartSize =
+            175 +
+            pulse * 25;
+    }
+
+
+    // Bordo
+    drawHeart(
+        centerX,
+        centerY,
+        heartSize + 20,
+        "#8c0a50"
+    );
+
+
+    // Cuore
+    drawHeart(
+        centerX,
+        centerY,
+        heartSize,
+        PINK
+    );
+
+
+    // Interno
+    drawHeart(
+        centerX,
+        centerY - 4,
+        heartSize * .72,
+        "#ff69b9"
+    );
+
+
+    // Riflesso
+    drawHeart(
+        centerX,
+        centerY - 7,
+        heartSize * .38,
+        LIGHT_PINK
+    );
+
+
+    // =====================================================
+    // PARTICELLE CLICK
+    // =====================================================
+
+    for (const p of clickParticles) {
+
+        ctx.beginPath();
+
+        ctx.arc(
+            p.x,
+            p.y,
+            p.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            LIGHT_PINK;
+
+        ctx.fill();
+    }
+
+
+    // =====================================================
+    // FINALE
+    // =====================================================
+
+    if (birthday) {
+
+
+        // =================================================
+        // CUORI ORBITANTI
+        // =================================================
+
+        for (const h of orbitHearts) {
+
+            const angle = h.angle;
+
+            const x =
+                centerX +
+                Math.cos(angle) *
+                h.distance;
+
+            let y =
+                centerY +
+                Math.sin(angle) *
+                h.distance *
+                .60;
+
+            y +=
+                Math.sin(h.phase) *
+                8;
+
+            drawHeart(
+                x,
+                y,
+                h.size,
+                LIGHT_PINK
+            );
+        }
+
+
+        // =================================================
+        // ORBITE
+        // =================================================
+
+        ctx.beginPath();
+
+        ctx.ellipse(
+            centerX,
+            centerY,
+            280,
+            160,
+            0,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.strokeStyle =
+            "#6e1964";
+
+        ctx.lineWidth = 2;
+
+        ctx.stroke();
+
+
+        ctx.beginPath();
+
+        ctx.ellipse(
+            centerX,
+            centerY,
+            330,
+            190,
+            0,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.strokeStyle =
+            "#4b0f50";
+
+        ctx.lineWidth = 1;
+
+        ctx.stroke();
+
+
+        // =================================================
+        // STELLE SPECIALI
+        // =================================================
+
+        for (let i = 0; i < 22; i++) {
+
+            const angle =
+                birthdayTime * .25 +
+                i * Math.PI * 2 / 22;
+
+            const radius =
+                285 +
+                Math.sin(
+                    birthdayTime + i
+                ) * 18;
+
+            const sx =
+                centerX +
+                Math.cos(angle) *
+                radius;
+
+            const sy =
+                centerY +
+                Math.sin(angle) *
+                radius *
+                .60;
+
+            const shine =
+                (
+                    Math.sin(
+                        birthdayTime * 3 + i
+                    ) + 1
+                ) / 2;
+
+            const size =
+                2 +
+                Math.floor(
+                    shine * 2
+                );
+
+            ctx.beginPath();
+
+            ctx.arc(
+                sx,
+                sy,
+                size,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fillStyle =
+                WHITE;
+
+            ctx.fill();
+        }
+
+
+        // =================================================
+        // CUORI CHE SALGONO
+        // =================================================
+
+        for (const h of birthdayHearts) {
+
+            drawHeart(
+                h.x,
+                h.y,
+                h.size,
+                PINK
+            );
+        }
+
+
+        // =================================================
+        // TITOLO
+        // =================================================
+
+        ctx.textAlign = "center";
+
+        ctx.font =
+            "bold 48px Arial";
+
+        ctx.fillStyle =
+            WHITE;
+
+        ctx.fillText(
+            "BUON COMPLEANNO",
+            centerX,
+            65
+        );
+
+
+        // =================================================
+        // NOME
+        // =================================================
+
+        ctx.font =
+            "bold 34px Arial";
+
+        ctx.fillStyle =
+            LIGHT_PINK;
+
+        ctx.fillText(
+            "SARA PALUMBO",
+            centerX,
+            120
+        );
+
+
+        // =================================================
+        // CUORE SOTTO
+        // =================================================
+
+        const smallHeartSize =
+            15 +
+            Math.sin(
+                birthdayTime * 2
+            ) * 3;
+
+        drawHeart(
+            centerX,
+            HEIGHT - 45,
+            smallHeartSize,
+            PINK
+        );
+    }
+
+
+    // =====================================================
+    // MESSAGGI
+    // =====================================================
+
+    if (
+        messageTimer > 0 &&
+        !birthday
+    ) {
+
+        let scale;
+        let yOffset;
+        let alpha;
+
+
+        // Entrata
+        if (messageAnimation < 35) {
+
+            const progress =
+                messageAnimation / 35;
+
+            const ease =
+                1 -
+                Math.pow(
+                    1 - progress,
+                    3
+                );
+
+            scale =
+                .70 +
+                ease * .30;
+
+            yOffset =
+                28 -
+                ease * 28;
+
+            alpha =
+                255 * ease;
+        }
+
+
+        // Visibile
+        else if (messageTimer > 45) {
+
+            scale = 1;
+            yOffset = 0;
+            alpha = 255;
+        }
+
+
+        // Uscita
+        else {
+
+            const progress =
+                1 -
+                messageTimer / 45;
+
+            const ease =
+                progress * progress;
+
+            scale =
+                1 -
+                ease * .18;
+
+            yOffset =
+                -ease * 25;
+
+            alpha =
+                255 *
+                (1 - ease);
+        }
+
+
+        ctx.save();
+
+        ctx.globalAlpha =
+            alpha / 255;
+
+        ctx.translate(
+            centerX,
+            centerY +
+            175 +
+            yOffset
+        );
+
+        ctx.scale(
+            scale,
+            scale
+        );
+
+        ctx.textAlign = "center";
+
+        ctx.font =
+            "bold 36px Arial";
+
+        // Glow
+        ctx.fillStyle =
+            PINK;
+
+        ctx.globalAlpha =
+            (alpha / 255) * .22;
+
+        ctx.fillText(
+            message,
+            -3,
+            0
+        );
+
+        ctx.fillText(
+            message,
+            3,
+            0
+        );
+
+
+        // Testo
+        ctx.globalAlpha =
+            alpha / 255;
+
+        ctx.fillStyle =
+            WHITE;
+
+        ctx.fillText(
+            message,
+            0,
+            0
+        );
+
+        ctx.restore();
+    }
+
+
+    // =====================================================
+    // SCHERMATA INIZIO
+    // =====================================================
+
+    if (showStartScreen) {
+
+        // Overlay scuro
+        ctx.fillStyle = "rgba(5, 2, 15, 0.4)";
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // Titolo principale
+        ctx.textAlign = "center";
+        ctx.font = "bold 64px Arial";
+        ctx.fillStyle = PINK;
+        ctx.fillText("LOVER", centerX, centerY - 100);
+
+        // Sottotitolo
+        ctx.font = "bold 32px Arial";
+        ctx.fillStyle = LIGHT_PINK;
+        ctx.fillText("❤️ Un'esperienza d'amore ❤️", centerX, centerY - 20);
+
+        // Pulsante CLICCAMI
+        const buttonWidth = 280;
+        const buttonHeight = 70;
+        const buttonX = centerX - buttonWidth / 2;
+        const buttonY = centerY + 60;
+
+        // Effetto pulse sul pulsante
+        const pulse = (Math.sin(time * 2) + 1) / 2;
+        const glowAlpha = 0.3 + pulse * 0.3;
+
+        // Glow
+        ctx.fillStyle = `rgba(255, 55, 160, ${glowAlpha})`;
+        ctx.beginPath();
+        ctx.roundRect(buttonX - 5, buttonY - 5, buttonWidth + 10, buttonHeight + 10, 20);
+        ctx.fill();
+
+        // Pulsante
+        ctx.fillStyle = PINK;
+        ctx.beginPath();
+        ctx.roundRect(buttonX, buttonY, buttonWidth, buttonHeight, 15);
+        ctx.fill();
+
+        // Bordo pulsante
+        ctx.strokeStyle = LIGHT_PINK;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(buttonX, buttonY, buttonWidth, buttonHeight, 15);
+        ctx.stroke();
+
+        // Testo pulsante
+        ctx.font = "bold 36px Arial";
+        ctx.fillStyle = WHITE;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("CLICCAMI ❤️", centerX, buttonY + buttonHeight / 2);
+
+        // Indicazione di clic
+        ctx.font = "18px Arial";
+        ctx.fillStyle = LIGHT_PINK;
+        ctx.textAlign = "center";
+        ctx.fillText("Premi il pulsante per iniziare", centerX, centerY + 180);
+    }
+
+
+    // =====================================================
+    // CONTATORE
+    // =====================================================
+
+    if (!birthday && !showStartScreen) {
+
+        ctx.textAlign = "left";
+
+        ctx.font =
+            "20px Arial";
+
+        ctx.fillStyle =
+            "#dcAADc";
+
+        ctx.fillText(
+            `❤️ ${clicks}/100`,
+            20,
+            30
+        );
+    }
+
+
+    // =====================================================
+    // CURSORE
+    // =====================================================
+
+    ctx.beginPath();
+
+    ctx.arc(
+        mouseX,
+        mouseY,
+        8,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.strokeStyle =
+        WHITE;
+
+    ctx.lineWidth = 2;
+
+    ctx.stroke();
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+        mouseX,
+        mouseY,
+        3,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle =
+        LIGHT_PINK;
+
+    ctx.fill();
+
+
+    requestAnimationFrame(animate);
+}
+
+
+// =========================================================
+// START
+// =========================================================
+
+animate();
+
+</script>
+
+</body>
+</html>
